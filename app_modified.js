@@ -2,7 +2,6 @@
 const appData = {
   magnetShapes: {
     square: { name: "Square", dimensions: "60×60mm", width: 60, height: 60 },
-    round: { name: "Round", dimensions: "Ø65mm", diameter: 65 }
   },
   fonts: {
     serif: [
@@ -250,11 +249,6 @@ function generateSVG() {
   let svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`;
   
   // Background
-  if (currentShape === 'round') {
-    svg += `<circle cx="${width/2}" cy="${height/2}" r="${(width/2)-1}" fill="white" stroke="black" stroke-width="1"/>`;
-  } else {
-    svg += `<rect x="1" y="1" width="${width-2}" height="${height-2}" fill="white" stroke="black" stroke-width="1"/>`;
-  }
   
   // Calculate positions
   const centerX = width / 2;
@@ -352,19 +346,6 @@ function generatePNG() {
   
   // White background
   ctx.fillStyle = 'white';
-  if (currentShape === 'round') {
-    ctx.beginPath();
-    ctx.arc(width/(2*dpiScale), height/(2*dpiScale), (width/(2*dpiScale))-1, 0, 2 * Math.PI);
-    ctx.fill();
-    ctx.strokeStyle = 'black';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  } else {
-    ctx.fillRect(0, 0, width/dpiScale, height/dpiScale);
-    ctx.strokeStyle = 'black';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(1, 1, (width/dpiScale)-2, (height/dpiScale)-2);
-  }
   
   // Calculate positions
   const centerX = width / (2 * dpiScale);

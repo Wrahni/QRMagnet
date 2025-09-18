@@ -836,9 +836,6 @@ select.form-control {
   border-radius: var(--radius-sm);
 }
 
-.round-preview {
-  border-radius: var(--radius-full);
-}
 
 .shape-option span {
   text-align: center;
@@ -929,11 +926,6 @@ select.form-control {
   border-radius: var(--radius-sm);
 }
 
-.magnet-preview.round {
-  width: 245px; /* 65mm at 96dpi */
-  height: 245px;
-  border-radius: 50%;
-}
 
 .greeting-text {
   font-family: 'Playfair Display', serif;
