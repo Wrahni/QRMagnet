@@ -13,196 +13,61 @@
   />
   <!-- QR Code Generator Library -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  <style>
+    /* Minimal CSS so you can test without external file */
+    body { font-family: sans-serif; padding: 1em; }
+    .preview-panel { margin-top: 1em; }
+    svg { width: 200px; height: 200px; border: 1px solid #ddd; }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <header class="app-header">
-      <h1>WiFi QR Code Magnet Generator</h1>
-      <p>Create high-contrast laser-engraving templates</p>
-    </header>
+  <h1>WiFi QR Code Magnet Generator</h1>
 
-    <div class="app-layout">
-      <div class="form-panel">
-        <form id="wifi-form">
-          <div class="form-section">
-            <h3>WiFi Details</h3>
-            <label for="ssid">SSID *</label>
-            <input id="ssid" required placeholder="Network Name"/>
-            <label for="password">Password *</label>
-            <input id="password" type="password" required placeholder="Password"/>
-            <label for="security">Security</label>
-            <select id="security">
-              <option value="WPA">WPA/WPA2</option>
-              <option value="WEP">WEP</option>
-              <option value="nopass">Open</option>
-            </select>
-          </div>
+  <label>SSID* <input id="ssid" value="SmithWiFi"></label><br>
+  <label>Password* <input id="password" value="12345678"></label><br>
+  <label>Security
+    <select id="security">
+      <option value="WPA">WPA/WPA2</option>
+      <option value="WEP">WEP</option>
+      <option value="nopass">Open</option>
+    </select>
+  </label><br>
 
-          <div class="form-section">
-            <h3>Magnet Design</h3>
-            <label for="shape">Shape</label>
-            <select id="shape">
-              <option value="square">Square 60×60mm</option>
-              <option value="round">Round Ø65mm</option>
-            </select>
-            <label for="greeting">Greeting (optional)</label>
-            <input id="greeting" placeholder="Welcome to the Smith Home"/>
-            <div>
-              <input type="checkbox" id="show-instructions" checked/>
-              <label for="show-instructions">Show instruction text</label>
-            </div>
-            <div>
-              <input type="checkbox" id="show-ssid"/>
-              <label for="show-ssid">Show SSID</label>
-            </div>
-            <div>
-              <input type="checkbox" id="show-password"/>
-              <label for="show-password">Show Password</label>
-            </div>
-            <div>
-              <label for="instruction-text">Instruction</label>
-              <input id="instruction-text" value="Scan to Connect"/>
-            </div>
-          </div>
+  <button id="update">Generate Preview</button>
 
-          <div class="form-section">
-            <h3>Typography</h3>
-            <label for="greeting-font">Greeting Font</label>
-            <select id="greeting-font">
-              <option value="Playfair Display, serif">Playfair Display</option>
-              <option value="Georgia, serif">Georgia</option>
-              <option value="Times New Roman, serif">Times New Roman</option>
-            </select>
-            <label for="instruction-font">Instruction Font</label>
-            <select id="instruction-font">
-              <option value="Roboto, sans-serif">Roboto</option>
-              <option value="Montserrat, sans-serif">Montserrat</option>
-            </select>
-            <label for="credentials-font">Credentials Font</label>
-            <select id="credentials-font">
-              <option value="Inconsolata, monospace">Inconsolata</option>
-              <option value="Courier New, monospace">Courier New</option>
-              <option value="Monaco, monospace">Monaco</option>
-            </select>
-          </div>
-
-          <div class="form-section">
-            <button type="button" id="download-svg">Download SVG</button>
-            <button type="button" id="download-png">Download PNG</button>
-          </div>
-        </form>
-      </div>
-
-      <div class="preview-panel">
-        <h3>Preview</h3>
-        <svg id="magnet-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <clipPath id="square-clip"><rect x="10" y="10" width="180" height="180" rx="5"/></clipPath>
-            <clipPath id="round-clip"><circle cx="100" cy="100" r="90"/></clipPath>
-          </defs>
-          <rect width="200" height="200" fill="white" stroke="#ddd" stroke-width="1"/>
-          <g id="content-group" clip-path="url(#square-clip)">
-            <text id="greeting-text" x="100" y="35" text-anchor="middle" font-family="Playfair Display, serif" font-size="6"/>
-            <g id="qr-container" transform="translate(100,100)"></g>
-            <text id="instruction-display" x="100" y="165" text-anchor="middle" font-family="Roboto, sans-serif" font-size="5">Scan to Connect</text>
-            <text id="ssid-display" x="100" y="180" text-anchor="middle" font-family="Inconsolata, monospace" font-size="3"/>
-            <text id="password-display" x="100" y="190" text-anchor="middle" font-family="Inconsolata, monospace" font-size="3"/>
-          </g>
-        </svg>
-      </div>
-    </div>
+  <div class="preview-panel">
+    <h2>Preview</h2>
+    <svg id="magnet-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <rect width="200" height="200" fill="white" stroke="#ddd"/>
+      <g id="qr-container" transform="translate(30,30)"></g>
+      <text id="wifi-label" x="100" y="190" text-anchor="middle" font-family="Inconsolata, monospace" font-size="10"></text>
+    </svg>
   </div>
 
   <script>
-    class WiFiQRGenerator {
-      constructor() {
-        this.initElements();
-        this.bindEvents();
-        this.updatePreview();
-      }
-      initElements() {
-        this.ssid = document.getElementById('ssid');
-        this.password = document.getElementById('password');
-        this.security = document.getElementById('security');
-        this.greeting = document.getElementById('greeting');
-        this.shape = document.getElementById('shape');
-        this.showInstructions = document.getElementById('show-instructions');
-        this.showSSID = document.getElementById('show-ssid');
-        this.showPassword = document.getElementById('show-password');
-        this.instructionText = document.getElementById('instruction-text');
-        this.greetingFont = document.getElementById('greeting-font');
-        this.instructionFont = document.getElementById('instruction-font');
-        this.credentialsFont = document.getElementById('credentials-font');
-        this.qrContainer = document.getElementById('qr-container');
-        this.greetingTextEl = document.getElementById('greeting-text');
-        this.instructionEl = document.getElementById('instruction-display');
-        this.ssidEl = document.getElementById('ssid-display');
-        this.passEl = document.getElementById('password-display');
-        this.svgEl = document.getElementById('magnet-svg');
-        this.downloadSVG = document.getElementById('download-svg');
-        this.downloadPNG = document.getElementById('download-png');
-      }
-      bindEvents() {
-        const inputs = [
-          this.ssid, this.password, this.security, this.greeting, this.shape,
-          this.showInstructions, this.showSSID, this.showPassword, this.instructionText,
-          this.greetingFont, this.instructionFont, this.credentialsFont
-        ];
-        inputs.forEach(el => el.addEventListener('input', () => this.updatePreview()));
-        this.downloadSVG.addEventListener('click', () => this.download('svg'));
-        this.downloadPNG.addEventListener('click', () => this.download('png'));
-      }
-      updatePreview() {
-        const wifiString = `WIFI:T:${this.security.value};S:${this.ssid.value};P:${this.password.value};;`;
-        this.generateQRCode(wifiString);
-        // Update text & visibility
-        this.greetingTextEl.textContent = this.greeting.value;
-        this.greetingTextEl.setAttribute('font-family', this.greetingFont.value);
-        this.instructionEl.textContent = this.showInstructions.checked ? this.instructionText.value : '';
-        this.instructionEl.setAttribute('font-family', this.instructionFont.value);
-        this.ssidEl.textContent = this.showSSID.checked ? this.ssid.value : '';
-        this.passEl.textContent = this.showPassword.checked ? this.password.value : '';
-        this.ssidEl.setAttribute('font-family', this.credentialsFont.value);
-        this.passEl.setAttribute('font-family', this.credentialsFont.value);
-        // Clip path for shape
-        const clip = this.shape.value === 'round' ? 'round-clip' : 'square-clip';
-        document.getElementById('content-group').setAttribute('clip-path', `url(#${clip})`);
-      }
-      generateQRCode(data) {
-        this.qrContainer.innerHTML = '';
-        const qr = qrcode(0, 'H');
-        qr.addData(data);
-        qr.make();
-        const svgTag = qr.createSvgTag({cellSize: 4, margin: 0});
-        this.qrContainer.innerHTML = svgTag;
-      }
-      download(type) {
-        const serializer = new XMLSerializer();
-        const source = serializer.serializeToString(this.svgEl);
-        if (type === 'svg') {
-          const blob = new Blob([source], {type: 'image/svg+xml;charset=utf-8'});
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url; a.download = 'wifi-magnet.svg'; a.click();
-        } else {
-          const canvas = document.createElement('canvas');
-          const img = new Image();
-          img.onload = () => {
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
-            canvas.toBlob(blob => {
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url; a.download = 'wifi-magnet.png'; a.click();
-            });
-          };
-          img.src = 'data:image/svg+xml;base64,' + btoa(source);
-        }
-      }
-    }
-    window.addEventListener('DOMContentLoaded', () => new WiFiQRGenerator());
+    // Single inline script so no old code remains
+    document.getElementById('update').addEventListener('click', () => {
+      const ssid = document.getElementById('ssid').value;
+      const pwd = document.getElementById('password').value;
+      const sec = document.getElementById('security').value;
+      const data = `WIFI:T:${sec};S:${ssid};P:${pwd};;`;
+
+      // Generate QR using qrcode-generator
+      const qr = qrcode(0, 'H');
+      qr.addData(data);
+      qr.make();
+      const svgTag = qr.createSvgTag({cellSize:4, margin:0});
+
+      // Insert QR
+      const container = document.getElementById('qr-container');
+      container.innerHTML = svgTag;
+
+      // Show SSID below
+      document.getElementById('wifi-label').textContent = `${ssid} / ${pwd}`;
+    });
+
+    // Auto-generate on load
+    window.onload = () => document.getElementById('update').click();
   </script>
 </body>
 </html>
