@@ -1,5 +1,6 @@
 class WiFiQRGenerator {
     constructor() {
+        this.qrCodeInstance = null;
         this.initializeElements();
         this.bindEvents();
         this.updatePreview();
@@ -96,7 +97,6 @@ class WiFiQRGenerator {
 
         // WiFi QR format: WIFI:T:WPA;S:MyNetwork;P:MyPassword;;
         let qrString;
-        
         if (security === 'nopass') {
             qrString = `WIFI:T:;S:${ssid};;`;
         } else {
@@ -106,7 +106,7 @@ class WiFiQRGenerator {
         return qrString;
     }
 
-    async generateQRCode() {
+    generateQRCode() {
         const qrString = this.generateWiFiQRString();
         if (!qrString) {
             this.clearQRCode();
@@ -117,122 +117,81 @@ class WiFiQRGenerator {
             // Clear existing QR code
             this.qrContainer.innerHTML = '';
 
-            // Generate QR code matrix
-            const qrData = await new Promise((resolve, reject) => {
-                QRCode.toDataURL(qrString, {
-                    width: 256,
-                    margin: 1,
-                    color: {
-                        dark: '#000000',
-                        light: '#ffffff'
-                    },
-                    errorCorrectionLevel: 'M'
-                }, (err, url) => {
-                    if (err) reject(err);
-                    else resolve(url);
-                });
+            // Create a temporary div for QRCode.js to render into
+            const tempDiv = document.createElement('div');
+            tempDiv.style.position = 'absolute';
+            tempDiv.style.left = '-9999px';
+            document.body.appendChild(tempDiv);
+
+            // Create QR code using QRCode.js
+            const qr = new QRCode(tempDiv, {
+                text: qrString,
+                width: 80,
+                height: 80,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
             });
 
-            // Create SVG QR code manually for better control
-            const qrMatrix = this.generateQRMatrix(qrString);
-            this.createSVGQRCode(qrMatrix);
+            // Wait a moment for the QR code to render
+            setTimeout(() => {
+                const qrSvg = tempDiv.querySelector('canvas') || tempDiv.querySelector('img');
+                if (qrSvg) {
+                    if (qrSvg.tagName === 'CANVAS') {
+                        // Convert canvas to SVG
+                        this.canvasToSVG(qrSvg);
+                    } else {
+                        // Handle img tag
+                        this.imageToSVG(qrSvg);
+                    }
+                } else {
+                    // Fallback: create simple placeholder
+                    this.createPlaceholderQR();
+                }
+                
+                // Clean up temporary div
+                document.body.removeChild(tempDiv);
+            }, 100);
 
         } catch (error) {
             console.error('Error generating QR code:', error);
-            this.clearQRCode();
+            this.createPlaceholderQR();
         }
     }
 
-    generateQRMatrix(text) {
-        // Use the QRCode library to generate matrix data
-        return new Promise((resolve, reject) => {
-            try {
-                // Generate QR code using the library's matrix generation
-                QRCode.toDataURL(text, {
-                    width: 200,
-                    margin: 0,
-                    errorCorrectionLevel: 'M'
-                }, (err, url) => {
-                    if (err) {
-                        reject(err);
-                        return;
-                    }
-                    
-                    // We'll create a simple pattern for now
-                    const size = 25; // 25x25 matrix
-                    const matrix = [];
-                    
-                    // Create a deterministic pattern based on the text
-                    const hash = this.simpleHash(text);
-                    for (let y = 0; y < size; y++) {
-                        matrix[y] = [];
-                        for (let x = 0; x < size; x++) {
-                            // Create a pattern that looks like a QR code
-                            const isCorner = (x < 7 && y < 7) || (x >= size - 7 && y < 7) || (x < 7 && y >= size - 7);
-                            const isFinder = isCorner && ((x < 3 || x > size - 4) || (y < 3 || y > size - 4));
-                            const isData = !isCorner && ((x + y + hash) % 3 === 0);
-                            
-                            matrix[y][x] = isFinder || isData ? 1 : 0;
-                        }
-                    }
-                    resolve(matrix);
-                });
-            } catch (error) {
-                reject(error);
-            }
-        });
-    }
-
-    simpleHash(str) {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            const char = str.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash; // Convert to 32-bit integer
-        }
-        return Math.abs(hash);
-    }
-
-    async createSVGQRCode(matrixPromise) {
+    canvasToSVG(canvas) {
         try {
-            const matrix = await matrixPromise;
-            const moduleSize = 3; // Size of each QR code module
-            const totalSize = matrix.length * moduleSize;
-            
-            // Create background
-            const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            bg.setAttribute('x', -totalSize/2);
-            bg.setAttribute('y', -totalSize/2);
-            bg.setAttribute('width', totalSize);
-            bg.setAttribute('height', totalSize);
-            bg.setAttribute('fill', 'white');
-            bg.setAttribute('stroke', 'black');
-            bg.setAttribute('stroke-width', '0.5');
-            this.qrContainer.appendChild(bg);
-
-            // Create QR modules
-            for (let y = 0; y < matrix.length; y++) {
-                for (let x = 0; x < matrix[y].length; x++) {
-                    if (matrix[y][x]) {
-                        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                        rect.setAttribute('x', (x * moduleSize) - totalSize/2);
-                        rect.setAttribute('y', (y * moduleSize) - totalSize/2);
-                        rect.setAttribute('width', moduleSize);
-                        rect.setAttribute('height', moduleSize);
-                        rect.setAttribute('fill', 'black');
-                        this.qrContainer.appendChild(rect);
-                    }
-                }
-            }
+            const dataURL = canvas.toDataURL('image/png');
+            const image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+            image.setAttribute('x', -40);
+            image.setAttribute('y', -40);
+            image.setAttribute('width', 80);
+            image.setAttribute('height', 80);
+            image.setAttribute('href', dataURL);
+            this.qrContainer.appendChild(image);
         } catch (error) {
-            console.error('Error creating SVG QR code:', error);
-            // Fallback: create a simple placeholder
+            console.error('Canvas to SVG conversion failed:', error);
+            this.createPlaceholderQR();
+        }
+    }
+
+    imageToSVG(img) {
+        try {
+            const image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+            image.setAttribute('x', -40);
+            image.setAttribute('y', -40);
+            image.setAttribute('width', 80);
+            image.setAttribute('height', 80);
+            image.setAttribute('href', img.src);
+            this.qrContainer.appendChild(image);
+        } catch (error) {
+            console.error('Image to SVG conversion failed:', error);
             this.createPlaceholderQR();
         }
     }
 
     createPlaceholderQR() {
-        const size = 75;
+        const size = 80;
         
         // Background
         const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -246,16 +205,16 @@ class WiFiQRGenerator {
         this.qrContainer.appendChild(bg);
 
         // Create a simple QR-like pattern
-        const moduleSize = 3;
+        const moduleSize = 4;
         const modules = size / moduleSize;
         
         for (let y = 0; y < modules; y++) {
             for (let x = 0; x < modules; x++) {
                 // Create a pattern that looks QR-ish
-                const shouldFill = (x + y) % 3 === 0 || 
-                                 (x < 5 && y < 5) || 
-                                 (x >= modules - 5 && y < 5) || 
-                                 (x < 5 && y >= modules - 5);
+                const shouldFill = (x + y) % 3 === 0 ||
+                                  (x < 4 && y < 4) ||
+                                  (x >= modules - 4 && y < 4) ||
+                                  (x < 4 && y >= modules - 4);
                 
                 if (shouldFill) {
                     const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -287,13 +246,13 @@ class WiFiQRGenerator {
     updatePreview() {
         // Update shape
         this.updateShape();
-
+        
         // Update QR code
         this.generateQRCode();
-
+        
         // Update text elements
         this.updateTextElements();
-
+        
         // Update fonts
         this.updateFonts();
     }
@@ -302,7 +261,7 @@ class WiFiQRGenerator {
         const shape = this.shapeSelect.value;
         this.magnetSvg.classList.remove('shape-square', 'shape-round');
         this.magnetSvg.classList.add(`shape-${shape}`);
-
+        
         if (shape === 'round') {
             this.contentGroup.setAttribute('clip-path', 'url(#round-clip)');
             this.background.setAttribute('rx', '90');
@@ -414,7 +373,7 @@ class WiFiQRGenerator {
             const svgString = new XMLSerializer().serializeToString(svgElement);
             const blob = new Blob([svgString], { type: 'image/svg+xml' });
             const url = URL.createObjectURL(blob);
-
+            
             const link = document.createElement('a');
             link.href = url;
             link.download = `wifi-magnet-${this.ssidInput.value.trim().replace(/\s+/g, '-')}.svg`;
@@ -437,7 +396,6 @@ class WiFiQRGenerator {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             const size = 400; // High resolution for print quality
-
             canvas.width = size;
             canvas.height = size;
 
@@ -474,13 +432,13 @@ class WiFiQRGenerator {
                     this.showSuccessMessage('PNG downloaded successfully!');
                 }, 'image/png');
             };
-
+            
             img.onerror = () => {
                 console.error('Error loading SVG for PNG conversion');
                 this.showErrorMessage('Error converting to PNG.');
                 URL.revokeObjectURL(svgUrl);
             };
-
+            
             img.src = svgUrl;
         } catch (error) {
             console.error('Error downloading PNG:', error);

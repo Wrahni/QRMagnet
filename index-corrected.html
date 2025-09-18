@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiFi QR Code Magnet Generator</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Montserrat:wght@400;500;600&family=Roboto:wght@400;500&family=Inconsolata:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- CORRECT QRCode.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="app-header">
+            <h1>WiFi QR Code Magnet Generator</h1>
+            <p>Create beautiful QR code magnets for easy WiFi sharing</p>
+        </header>
+
+        <div class="app-layout">
+            <div class="form-panel">
+                <!-- WiFi Configuration -->
+                <section class="form-section">
+                    <h2>WiFi Configuration</h2>
+                    <div class="form-group">
+                        <label for="ssid" class="form-label">Network Name (SSID) *</label>
+                        <input type="text" id="ssid" class="form-control" placeholder="Enter WiFi network name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password" class="form-label">Password *</label>
+                        <div class="password-input-wrapper">
+                            <input type="password" id="password" class="form-control" placeholder="Enter WiFi password">
+                            <button type="button" id="toggle-password" class="btn btn-secondary">Show</button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="security" class="form-label">Security Type</label>
+                        <select id="security" class="form-control">
+                            <option value="WPA">WPA/WPA2</option>
+                            <option value="WEP">WEP</option>
+                            <option value="nopass">Open (No Password)</option>
+                        </select>
+                    </div>
+                </section>
+
+                <!-- Customization Options -->
+                <section class="form-section">
+                    <h2>Customization</h2>
+                    <div class="form-group">
+                        <label for="greeting" class="form-label">Greeting Text</label>
+                        <input type="text" id="greeting" class="form-control" placeholder="Welcome to our WiFi!">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="shape" class="form-label">Magnet Shape</label>
+                        <select id="shape" class="form-control">
+                            <option value="square">Square</option>
+                            <option value="round">Round</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Display Options -->
+                    <div class="form-group">
+                        <h3>Display Options</h3>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="show-instructions" checked>
+                                <label for="show-instructions">Show Instructions</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="show-ssid">
+                                <label for="show-ssid">Show Network Name</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="show-password">
+                                <label for="show-password">Show Password</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="instruction-input" style="display: block;">
+                        <div class="form-group">
+                            <label for="instruction-text" class="form-label">Instruction Text</label>
+                            <input type="text" id="instruction-text" class="form-control" value="Scan to Connect" placeholder="Custom instructions">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Font Selection -->
+                <section class="form-section">
+                    <h2>Typography</h2>
+                    <div class="form-group">
+                        <label for="greeting-font" class="form-label">Greeting Font</label>
+                        <select id="greeting-font" class="form-control">
+                            <option value="Playfair Display">Playfair Display</option>
+                            <option value="Montserrat">Montserrat</option>
+                            <option value="Roboto">Roboto</option>
+                            <option value="Inconsolata">Inconsolata</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="instruction-font" class="form-label">Instruction Font</label>
+                        <select id="instruction-font" class="form-control">
+                            <option value="Montserrat">Montserrat</option>
+                            <option value="Playfair Display">Playfair Display</option>
+                            <option value="Roboto">Roboto</option>
+                            <option value="Inconsolata">Inconsolata</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="credentials-font" class="form-label">Credentials Font</label>
+                        <select id="credentials-font" class="form-control">
+                            <option value="Inconsolata">Inconsolata</option>
+                            <option value="Roboto">Roboto</option>
+                            <option value="Montserrat">Montserrat</option>
+                            <option value="Playfair Display">Playfair Display</option>
+                        </select>
+                    </div>
+                </section>
+
+                <!-- Download Section -->
+                <section class="form-section">
+                    <h2>Download</h2>
+                    <div class="download-buttons">
+                        <button id="download-svg" class="btn btn-primary">Download SVG</button>
+                        <button id="download-png" class="btn btn-secondary">Download PNG</button>
+                    </div>
+                </section>
+            </div>
+
+            <div class="preview-panel">
+                <div class="preview-container">
+                    <h3>Preview</h3>
+                    <div class="magnet-preview">
+                        <svg id="magnet-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <clipPath id="square-clip">
+                                    <rect x="5" y="5" width="190" height="190" rx="5" ry="5"/>
+                                </clipPath>
+                                <clipPath id="round-clip">
+                                    <circle cx="100" cy="100" r="95"/>
+                                </clipPath>
+                            </defs>
+                            
+                            <g id="content-group">
+                                <!-- Background -->
+                                <rect id="background" x="5" y="5" width="190" height="190" 
+                                      fill="white" stroke="#ddd" stroke-width="2" rx="5" ry="5"/>
+                                
+                                <!-- Text Elements -->
+                                <text id="greeting-text" x="100" y="40" 
+                                      text-anchor="middle" font-size="12" font-weight="600"
+                                      fill="black" font-family="Playfair Display">
+                                </text>
+                                
+                                <!-- QR Code Container -->
+                                <g id="qr-container" transform="translate(100, 100)">
+                                    <!-- QR code will be inserted here -->
+                                </g>
+                                
+                                <!-- Instruction Text -->
+                                <text id="instruction-display" x="100" y="170" 
+                                      text-anchor="middle" font-size="10" 
+                                      fill="black" font-family="Montserrat">
+                                    Scan to Connect
+                                </text>
+                                
+                                <!-- Network Details -->
+                                <text id="ssid-display" x="100" y="182" 
+                                      text-anchor="middle" font-size="8" 
+                                      fill="black" font-family="Inconsolata">
+                                </text>
+                                
+                                <text id="password-display" x="100" y="194" 
+                                      text-anchor="middle" font-size="8" 
+                                      fill="black" font-family="Inconsolata">
+                                </text>
+                            </g>
+                        </svg>
+                    </div>
+                    <div class="preview-info">
+                        <p>Preview updates automatically as you make changes</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
