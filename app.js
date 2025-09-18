@@ -1,31 +1,31 @@
 // Application data
 const appData = {
-    magnetShapes: {
-        square: { name: "Square", dimensions: "60×60mm", width: 60, height: 60 },
-        round: { name: "Round", dimensions: "Ø65mm", diameter: 65 }
-    },
-    fonts: {
-        serif: [
-            { name: "Playfair Display", family: "Playfair Display, serif" },
-            { name: "Georgia", family: "Georgia, serif" },
-            { name: "Times New Roman", family: "Times New Roman, serif" }
-        ],
-        sansSerif: [
-            { name: "Montserrat", family: "Montserrat, sans-serif" },
-            { name: "Roboto", family: "Roboto, sans-serif" },
-            { name: "Arial", family: "Arial, sans-serif" }
-        ],
-        monospace: [
-            { name: "Inconsolata", family: "Inconsolata, monospace" },
-            { name: "Courier New", family: "Courier New, monospace" },
-            { name: "Monaco", family: "Monaco, monospace" }
-        ]
-    },
-    designSpecs: {
-        qrSize: 40,
-        margin: 3,
-        textSizes: { greeting: 8, instruction: 6, credentials: 5 }
-    }
+  magnetShapes: {
+    square: { name: "Square", dimensions: "60×60mm", width: 60, height: 60 },
+    round: { name: "Round", dimensions: "Ø65mm", diameter: 65 }
+  },
+  fonts: {
+    serif: [
+      { name: "Playfair Display", family: "Playfair Display, serif" },
+      { name: "Georgia", family: "Georgia, serif" },
+      { name: "Times New Roman", family: "Times New Roman, serif" }
+    ],
+    sansSerif: [
+      { name: "Montserrat", family: "Montserrat, sans-serif" },
+      { name: "Roboto", family: "Roboto, sans-serif" },
+      { name: "Arial", family: "Arial, sans-serif" }
+    ],
+    monospace: [
+      { name: "Inconsolata", family: "Inconsolata, monospace" },
+      { name: "Courier New", family: "Courier New, monospace" },
+      { name: "Monaco", family: "Monaco, monospace" }
+    ]
+  },
+  designSpecs: {
+    qrSize: 40,
+    margin: 3,
+    textSizes: { greeting: 8, instruction: 6, credentials: 5 }
+  }
 };
 
 // Global state
@@ -34,457 +34,399 @@ let currentShape = 'square';
 
 // DOM Elements
 const elements = {
-    form: document.getElementById('configForm'),
-    magnetPreview: document.getElementById('magnetPreview'),
-    previewDimensions: document.getElementById('previewDimensions'),
-    qrCanvas: document.getElementById('qrCanvas'),
-    exportSvg: document.getElementById('exportSvg'),
-    exportPng: document.getElementById('exportPng'),
-
-    // Form inputs
-    networkName: document.getElementById('networkName'),
-    password: document.getElementById('password'),
-    greeting: document.getElementById('greeting'),
-    instruction: document.getElementById('instruction'),
-    shape: document.getElementById('shape'),
-    greetingFont: document.getElementById('greetingFont'),
-    instructionFont: document.getElementById('instructionFont'),
-    credentialsFont: document.getElementById('credentialsFont')
+  form: document.getElementById('magnetForm'),
+  ssidInput: document.getElementById('ssid'),
+  passwordInput: document.getElementById('password'),
+  securitySelect: document.getElementById('security'),
+  greetingInput: document.getElementById('greeting'),
+  instructionInput: document.getElementById('instruction'),
+  greetingFontSelect: document.getElementById('greetingFont'),
+  instructionFontSelect: document.getElementById('instructionFont'),
+  credentialFontSelect: document.getElementById('credentialFont'),
+  togglePasswordBtn: document.getElementById('togglePassword'),
+  toggleIcon: document.getElementById('toggleIcon'),
+  generateSVGBtn: document.getElementById('generateSVG'),
+  generatePNGBtn: document.getElementById('generatePNG'),
+  magnetPreview: document.getElementById('magnetPreview'),
+  previewDimensions: document.getElementById('previewDimensions'),
+  previewGreeting: document.getElementById('previewGreeting'),
+  previewInstruction: document.getElementById('previewInstruction'),
+  previewSSID: document.getElementById('previewSSID'),
+  previewPassword: document.getElementById('previewPassword'),
+  qrCanvas: document.getElementById('qrCanvas'),
+  shapeInputs: document.querySelectorAll('input[name="shape"]')
 };
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
-    initializeFontSelectors();
-    bindEventListeners();
-    updatePreview();
+  initializeEventListeners();
+  updatePreview();
 });
 
-// Initialize font selectors
-function initializeFontSelectors() {
-    populateFontSelector(elements.greetingFont, 'sansSerif');
-    populateFontSelector(elements.instructionFont, 'sansSerif');
-    populateFontSelector(elements.credentialsFont, 'monospace');
+// Event listeners
+function initializeEventListeners() {
+  // Form inputs
+  elements.ssidInput.addEventListener('input', updatePreview);
+  elements.passwordInput.addEventListener('input', updatePreview);
+  elements.securitySelect.addEventListener('change', updatePreview);
+  elements.greetingInput.addEventListener('input', updatePreview);
+  elements.instructionInput.addEventListener('input', updatePreview);
+  
+  // Font selectors
+  elements.greetingFontSelect.addEventListener('change', updateFonts);
+  elements.instructionFontSelect.addEventListener('change', updateFonts);
+  elements.credentialFontSelect.addEventListener('change', updateFonts);
+  
+  // Shape selector
+  elements.shapeInputs.forEach(input => {
+    input.addEventListener('change', handleShapeChange);
+  });
+  
+  // Password toggle
+  elements.togglePasswordBtn.addEventListener('click', togglePasswordVisibility);
+  
+  // Generate buttons
+  elements.generateSVGBtn.addEventListener('click', generateSVG);
+  elements.generatePNGBtn.addEventListener('click', generatePNG);
 }
 
-// Populate font selector dropdown
-function populateFontSelector(selectElement, defaultCategory) {
-    selectElement.innerHTML = '';
-
-    Object.entries(appData.fonts).forEach(([category, fonts]) => {
-        const optgroup = document.createElement('optgroup');
-        optgroup.label = category.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-
-        fonts.forEach(font => {
-            const option = document.createElement('option');
-            option.value = font.family;
-            option.textContent = font.name;
-            option.style.fontFamily = font.family;
-
-            if (category === defaultCategory && fonts.indexOf(font) === 0) {
-                option.selected = true;
-            }
-
-            optgroup.appendChild(option);
-        });
-
-        selectElement.appendChild(optgroup);
-    });
-}
-
-// Bind event listeners
-function bindEventListeners() {
-    elements.form.addEventListener('change', updatePreview);
-    elements.form.addEventListener('input', updatePreview);
-    elements.exportSvg.addEventListener('click', exportSVG);
-    elements.exportPng.addEventListener('click', exportPNG);
-    elements.shape.addEventListener('change', handleShapeChange);
-}
-
-// Handle shape change with circular QR code styling
+// Handle shape change
 function handleShapeChange(event) {
-    currentShape = event.target.value;
-    const shape = appData.magnetShapes[currentShape];
-
-    // Update preview container
-    elements.magnetPreview.className = `magnet-preview ${currentShape}`;
-    elements.previewDimensions.textContent = shape.dimensions;
-
-    // Apply round styling to QR code when round magnet is selected
-    if (currentShape === 'round') {
-        elements.qrCanvas.classList.add('round-qr');
-    } else {
-        elements.qrCanvas.classList.remove('round-qr');
-    }
-
-    updatePreview();
+  currentShape = event.target.value;
+  const shape = appData.magnetShapes[currentShape];
+  
+  // Update preview container
+  elements.magnetPreview.className = `magnet-preview ${currentShape}`;
+  elements.previewDimensions.textContent = shape.dimensions;
+  
+  updatePreview();
 }
 
-// Enhanced QR Code generation with circular clipping
-function generateQRCode(text) {
-    try {
-        return qrcode(0, 'M');
-    } catch (error) {
-        console.error('QR Code generation failed:', error);
-        return null;
-    }
+// Toggle password visibility
+function togglePasswordVisibility() {
+  const isPassword = elements.passwordInput.type === 'password';
+  elements.passwordInput.type = isPassword ? 'text' : 'password';
+  elements.toggleIcon.textContent = isPassword ? '🙈' : '👁️';
 }
 
-// Enhanced canvas drawing with circular clipping for QR code
-function drawQRCodeToCanvas(qrCode, canvas) {
-    if (!qrCode || !canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    const size = 150; // 40mm at preview scale
-    canvas.width = size;
-    canvas.height = size;
-
-    const modules = qrCode.modules;
-    const moduleCount = modules.length;
-    const moduleSize = size / moduleCount;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, size, size);
-
-    // Apply circular clipping mask if round shape is selected
-    if (currentShape === 'round') {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(size/2, size/2, size/2, 0, 2 * Math.PI);
-        ctx.clip();
-    }
-
-    // Fill background
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, size, size);
-
-    // Draw QR modules
-    ctx.fillStyle = 'black';
-    for (let row = 0; row < moduleCount; row++) {
-        for (let col = 0; col < moduleCount; col++) {
-            if (modules[row][col]) {
-                ctx.fillRect(col * moduleSize, row * moduleSize, moduleSize, moduleSize);
-            }
-        }
-    }
-
-    // Restore context if clipping was applied
-    if (currentShape === 'round') {
-        ctx.restore();
-    }
+// Update fonts in preview
+function updateFonts() {
+  const greetingFont = elements.greetingFontSelect.value;
+  const instructionFont = elements.instructionFontSelect.value;
+  const credentialFont = elements.credentialFontSelect.value;
+  
+  elements.previewGreeting.style.fontFamily = greetingFont;
+  elements.previewInstruction.style.fontFamily = instructionFont;
+  elements.previewSSID.style.fontFamily = credentialFont;
+  elements.previewPassword.style.fontFamily = credentialFont;
 }
 
-// Enhanced text drawing with circular path support
-function drawTextAlongCircle(ctx, text, x, y, radius, startAngle, fontSize, fontFamily) {
-    ctx.save();
-    ctx.font = `${fontSize}px ${fontFamily}`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    const anglePerChar = (Math.PI * 1.8) / text.length; // Spread text around most of circle
-
-    for (let i = 0; i < text.length; i++) {
-        const char = text[i];
-        const angle = startAngle + (i * anglePerChar) - (Math.PI * 0.9); // Center the text
-
-        const charX = x + Math.cos(angle) * radius;
-        const charY = y + Math.sin(angle) * radius;
-
-        ctx.save();
-        ctx.translate(charX, charY);
-        ctx.rotate(angle + Math.PI/2); // Rotate character to follow curve
-        ctx.fillText(char, 0, 0);
-        ctx.restore();
-    }
-
-    ctx.restore();
+// Generate WiFi QR code string
+function generateWiFiString() {
+  const ssid = elements.ssidInput.value.trim();
+  const password = elements.passwordInput.value;
+  const security = elements.securitySelect.value;
+  
+  if (!ssid) return null;
+  
+  // Format: WIFI:T:WPA;S:SSID;P:PASSWORD;H:;;
+  let wifiString = `WIFI:T:${security};S:${ssid};`;
+  
+  if (security !== 'nopass' && password) {
+    wifiString += `P:${password};`;
+  }
+  
+  wifiString += 'H:;;';
+  return wifiString;
 }
 
-// Update preview with enhanced circular text support
-function updatePreview() {
-    const formData = {
-        networkName: elements.networkName.value || 'Your Network',
-        password: elements.password.value || 'password123',
-        greeting: elements.greeting.value || 'Scan to Connect',
-        instruction: elements.instruction.value || 'Point camera at QR code',
-        greetingFont: elements.greetingFont.value,
-        instructionFont: elements.instructionFont.value,
-        credentialsFont: elements.credentialsFont.value
-    };
-
-    // Generate WiFi QR code
-    const wifiString = `WIFI:T:WPA;S:${formData.networkName};P:${formData.password};H:false;;`;
-    currentQRCode = generateQRCode(wifiString);
-
-    if (currentQRCode) {
-        currentQRCode.addData(wifiString);
-        currentQRCode.make();
-        drawQRCodeToCanvas(currentQRCode, elements.qrCanvas);
-    }
-
-    // Update text elements in preview
-    updateTextElements(formData);
-}
-
-// Update text elements with circular support
-function updateTextElements(formData) {
-    const greetingElement = document.querySelector('.preview-greeting');
-    const instructionElement = document.querySelector('.preview-instruction');
-    const networkElement = document.querySelector('.network-name');
-    const passwordElement = document.querySelector('.network-password');
-
-    if (greetingElement) {
-        greetingElement.textContent = formData.greeting;
-        greetingElement.style.fontFamily = formData.greetingFont;
-
-        // Apply circular text styling for round magnets
-        if (currentShape === 'round') {
-            greetingElement.classList.add('circular-text');
-        } else {
-            greetingElement.classList.remove('circular-text');
-        }
-    }
-
-    if (instructionElement) {
-        instructionElement.textContent = formData.instruction;
-        instructionElement.style.fontFamily = formData.instructionFont;
-
-        // Apply circular text styling for round magnets
-        if (currentShape === 'round') {
-            instructionElement.classList.add('circular-text-bottom');
-        } else {
-            instructionElement.classList.remove('circular-text-bottom');
-        }
-    }
-
-    if (networkElement) {
-        networkElement.textContent = `Network: ${formData.networkName}`;
-        networkElement.style.fontFamily = formData.credentialsFont;
-    }
-
-    if (passwordElement) {
-        passwordElement.textContent = `Password: ${formData.password}`;
-        passwordElement.style.fontFamily = formData.credentialsFont;
-    }
-}
-
-// Enhanced SVG export with circular QR code support
-function exportSVG() {
-    const formData = getFormData();
-    const shape = appData.magnetShapes[currentShape];
-    const { qrSize, margin, textSizes } = appData.designSpecs;
-
-    // Calculate dimensions
-    const totalWidth = currentShape === 'round' ? shape.diameter : shape.width;
-    const totalHeight = currentShape === 'round' ? shape.diameter : shape.height;
-
-    // Start SVG
-    let svg = `<svg width="${totalWidth}mm" height="${totalHeight}mm" viewBox="0 0 ${totalWidth} ${totalHeight}" xmlns="http://www.w3.org/2000/svg">`;
-
-    // Add circular clipping definition for round QR codes
-    if (currentShape === 'round') {
-        svg += `<defs>
-            <clipPath id="qrClip">
-                <circle cx="${totalWidth/2}" cy="${totalHeight/2 - 5}" r="${qrSize/2}"/>
-            </clipPath>
-        </defs>`;
-    }
-
-    // Background
-    if (currentShape === 'round') {
-        svg += `<circle cx="${totalWidth/2}" cy="${totalHeight/2}" r="${totalWidth/2}" fill="white" stroke="black" stroke-width="0.1"/>`;
-    } else {
-        svg += `<rect x="0" y="0" width="${totalWidth}" height="${totalHeight}" fill="white" stroke="black" stroke-width="0.1"/>`;
-    }
-
-    // QR Code
-    if (currentQRCode) {
-        const qrX = (totalWidth - qrSize) / 2;
-        const currentY = margin + textSizes.greeting + 2;
-
-        const modules = currentQRCode.modules;
-        const moduleCount = modules.length;
-        const moduleSize = qrSize / moduleCount;
-
-        // Apply clipping for round QR codes
-        const clipPath = currentShape === 'round' ? ' clip-path="url(#qrClip)"' : '';
-        svg += `<g${clipPath}>`;
-
-        for (let row = 0; row < moduleCount; row++) {
-            for (let col = 0; col < moduleCount; col++) {
-                if (modules[row][col]) {
-                    const x = qrX + (col * moduleSize);
-                    const y = currentY + (row * moduleSize);
-                    svg += `<rect x="${x}" y="${y}" width="${moduleSize}" height="${moduleSize}" fill="black"/>`;
-                }
-            }
-        }
-        svg += `</g>`;
-
-        // Text elements with circular path support
-        const greetingY = margin + textSizes.greeting/2;
-        const instructionY = currentY + qrSize + 3;
-        const credentialsY = instructionY + textSizes.instruction + 3;
-
-        if (currentShape === 'round') {
-            // Circular text paths
-            const centerX = totalWidth / 2;
-            const centerY = totalHeight / 2;
-            const textRadius = totalWidth / 2 - margin - 5;
-
-            svg += `<defs>
-                <path id="topCircle" d="M ${centerX - textRadius},${centerY} A ${textRadius},${textRadius} 0 0,1 ${centerX + textRadius},${centerY}"/>
-                <path id="bottomCircle" d="M ${centerX + textRadius},${centerY} A ${textRadius},${textRadius} 0 0,1 ${centerX - textRadius},${centerY}"/>
-            </defs>`;
-
-            svg += `<text font-family="${formData.greetingFont}" font-size="${textSizes.greeting}" fill="black" text-anchor="middle">
-                <textPath href="#topCircle" startOffset="50%">${formData.greeting}</textPath>
-            </text>`;
-
-            svg += `<text font-family="${formData.instructionFont}" font-size="${textSizes.instruction}" fill="black" text-anchor="middle">
-                <textPath href="#bottomCircle" startOffset="50%">${formData.instruction}</textPath>
-            </text>`;
-        } else {
-            // Regular straight text
-            svg += `<text x="${totalWidth/2}" y="${greetingY}" font-family="${formData.greetingFont}" font-size="${textSizes.greeting}" fill="black" text-anchor="middle">${formData.greeting}</text>`;
-            svg += `<text x="${totalWidth/2}" y="${instructionY}" font-family="${formData.instructionFont}" font-size="${textSizes.instruction}" fill="black" text-anchor="middle">${formData.instruction}</text>`;
-        }
-
-        // Credentials (always straight)
-        svg += `<text x="${totalWidth/2}" y="${credentialsY}" font-family="${formData.credentialsFont}" font-size="${textSizes.credentials}" fill="black" text-anchor="middle">Network: ${formData.networkName}</text>`;
-        svg += `<text x="${totalWidth/2}" y="${credentialsY + textSizes.credentials + 1}" font-family="${formData.credentialsFont}" font-size="${textSizes.credentials}" fill="black" text-anchor="middle">Password: ${formData.password}</text>`;
-    }
-
-    svg += `</svg>`;
-
-    // Download
-    downloadFile(svg, `wifi-magnet-${currentShape}.svg`, 'image/svg+xml');
-}
-
-// Enhanced PNG export with circular QR code support
-function exportPNG() {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const dpi = 300; // High resolution for print
-    const mmToPx = dpi / 25.4;
-
-    const formData = getFormData();
-    const shape = appData.magnetShapes[currentShape];
-    const { qrSize, margin, textSizes } = appData.designSpecs;
-
-    // Calculate dimensions in pixels
-    const totalWidth = (currentShape === 'round' ? shape.diameter : shape.width) * mmToPx;
-    const totalHeight = (currentShape === 'round' ? shape.diameter : shape.height) * mmToPx;
-
-    canvas.width = totalWidth;
-    canvas.height = totalHeight;
-
-    // Background
-    ctx.fillStyle = 'white';
-    if (currentShape === 'round') {
-        ctx.beginPath();
-        ctx.arc(totalWidth/2, totalHeight/2, totalWidth/2, 0, 2 * Math.PI);
-        ctx.fill();
-        ctx.stroke();
-    } else {
-        ctx.fillRect(0, 0, totalWidth, totalHeight);
-        ctx.strokeRect(0, 0, totalWidth, totalHeight);
-    }
-
-    // QR Code with circular clipping
-    if (currentQRCode) {
-        const qrSizePx = qrSize * mmToPx;
-        const qrX = (totalWidth - qrSizePx) / 2;
-        const currentY = (margin + textSizes.greeting + 2) * mmToPx;
-
-        // Apply circular clipping for round QR codes
-        if (currentShape === 'round') {
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(totalWidth/2, currentY + qrSizePx/2, qrSizePx/2, 0, 2 * Math.PI);
-            ctx.clip();
-        }
-
-        const modules = currentQRCode.modules;
-        const moduleCount = modules.length;
-        const moduleSize = qrSizePx / moduleCount;
-
-        ctx.fillStyle = 'black';
-        for (let row = 0; row < moduleCount; row++) {
-            for (let col = 0; col < moduleCount; col++) {
-                if (modules[row][col]) {
-                    const x = qrX + (col * moduleSize);
-                    const y = currentY + (row * moduleSize);
-                    ctx.fillRect(x, y, moduleSize, moduleSize);
-                }
-            }
-        }
-
-        if (currentShape === 'round') {
-            ctx.restore();
-        }
-
-        // Text with circular support
-        ctx.fillStyle = 'black';
-        ctx.textAlign = 'center';
-
-        if (currentShape === 'round') {
-            // Circular text
-            const centerX = totalWidth / 2;
-            const centerY = totalHeight / 2;
-            const textRadius = (totalWidth / 2) - (margin * mmToPx) - (20 * mmToPx);
-
-            // Top curved text (greeting)
-            drawTextAlongCircle(ctx, formData.greeting, centerX, centerY, textRadius, -Math.PI/2, textSizes.greeting * mmToPx/3, formData.greetingFont);
-
-            // Bottom curved text (instruction)  
-            drawTextAlongCircle(ctx, formData.instruction, centerX, centerY, textRadius, Math.PI/2, textSizes.instruction * mmToPx/3, formData.instructionFont);
-        } else {
-            // Regular straight text
-            const greetingY = (margin + textSizes.greeting/2) * mmToPx;
-            const instructionY = currentY + qrSizePx + (3 * mmToPx);
-
-            ctx.font = `${textSizes.greeting * mmToPx/3}px ${formData.greetingFont}`;
-            ctx.fillText(formData.greeting, totalWidth/2, greetingY);
-
-            ctx.font = `${textSizes.instruction * mmToPx/3}px ${formData.instructionFont}`;
-            ctx.fillText(formData.instruction, totalWidth/2, instructionY);
-        }
-
-        // Credentials (always straight)
-        const credentialsY = (currentShape === 'round' ? totalHeight - (margin * 2 * mmToPx) : totalHeight - (margin * mmToPx));
-        ctx.font = `${textSizes.credentials * mmToPx/3}px ${formData.credentialsFont}`;
-        ctx.fillText(`Network: ${formData.networkName}`, totalWidth/2, credentialsY - (textSizes.credentials * mmToPx/2));
-        ctx.fillText(`Password: ${formData.password}`, totalWidth/2, credentialsY);
-    }
-
-    // Download
-    canvas.toBlob(blob => {
-        downloadFile(blob, `wifi-magnet-${currentShape}.png`, 'image/png');
+// Generate QR code
+function generateQRCode() {
+  const wifiString = generateWiFiString();
+  if (!wifiString) return null;
+  
+  try {
+    // Create QR code with high error correction
+    currentQRCode = QRCode.create(wifiString, {
+      errorCorrectionLevel: 'H',
+      margin: 1,
+      width: 150
     });
+    
+    return currentQRCode;
+  } catch (error) {
+    console.error('QR Code generation failed:', error);
+    return null;
+  }
 }
 
-// Get form data
-function getFormData() {
-    return {
-        networkName: elements.networkName.value || 'Your Network',
-        password: elements.password.value || 'password123',
-        greeting: elements.greeting.value || 'Scan to Connect',
-        instruction: elements.instruction.value || 'Point camera at QR code',
-        greetingFont: elements.greetingFont.value,
-        instructionFont: elements.instructionFont.value,
-        credentialsFont: elements.credentialsFont.value
-    };
+// Draw QR code to canvas
+function drawQRCodeToCanvas(qrCode, canvas) {
+  if (!qrCode || !canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  const size = 150; // 40mm at preview scale
+  
+  canvas.width = size;
+  canvas.height = size;
+  
+  const modules = qrCode.modules;
+  const moduleCount = modules.length;
+  const moduleSize = size / moduleCount;
+  
+  // Clear canvas
+  ctx.fillStyle = 'white';
+  ctx.fillRect(0, 0, size, size);
+  
+  // Draw QR modules
+  ctx.fillStyle = 'black';
+  for (let row = 0; row < moduleCount; row++) {
+    for (let col = 0; col < moduleCount; col++) {
+      if (modules[row][col]) {
+        ctx.fillRect(col * moduleSize, row * moduleSize, moduleSize, moduleSize);
+      }
+    }
+  }
 }
 
-// Download file helper
-function downloadFile(content, filename, mimeType) {
-    const blob = content instanceof Blob ? content : new Blob([content], { type: mimeType });
+// Update preview
+function updatePreview() {
+  const ssid = elements.ssidInput.value.trim();
+  const password = elements.passwordInput.value;
+  const greeting = elements.greetingInput.value.trim();
+  const instruction = elements.instructionInput.value.trim() || 'Scan to Connect';
+  
+  // Update text content
+  elements.previewGreeting.textContent = greeting;
+  elements.previewInstruction.textContent = instruction;
+  elements.previewSSID.textContent = ssid ? `Network: ${ssid}` : 'Network: ';
+  elements.previewPassword.textContent = password ? `Password: ${password}` : 'Password: ';
+  
+  // Generate and display QR code
+  const qrCode = generateQRCode();
+  if (qrCode) {
+    drawQRCodeToCanvas(qrCode, elements.qrCanvas);
+  } else {
+    // Clear canvas if no valid QR code
+    const ctx = elements.qrCanvas.getContext('2d');
+    ctx.clearRect(0, 0, elements.qrCanvas.width, elements.qrCanvas.height);
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(0, 0, 150, 150);
+    ctx.fillStyle = '#666';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Enter SSID', 75, 70);
+    ctx.fillText('to generate', 75, 90);
+    ctx.fillText('QR code', 75, 110);
+  }
+  
+  // Update fonts
+  updateFonts();
+}
+
+// Generate SVG
+function generateSVG() {
+  const ssid = elements.ssidInput.value.trim();
+  const password = elements.passwordInput.value;
+  
+  if (!ssid) {
+    alert('Please enter a WiFi SSID');
+    return;
+  }
+  
+  const greeting = elements.greetingInput.value.trim();
+  const instruction = elements.instructionInput.value.trim() || 'Scan to Connect';
+  const shape = appData.magnetShapes[currentShape];
+  const greetingFont = elements.greetingFontSelect.value;
+  const instructionFont = elements.instructionFontSelect.value;
+  const credentialFont = elements.credentialFontSelect.value;
+  
+  // Calculate dimensions in mm to pixels (96 DPI)
+  const mmToPx = 3.7795275591; // 96 DPI conversion
+  const width = currentShape === 'square' ? shape.width * mmToPx : shape.diameter * mmToPx;
+  const height = currentShape === 'square' ? shape.height * mmToPx : shape.diameter * mmToPx;
+  const margin = appData.designSpecs.margin * mmToPx;
+  
+  let svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`;
+  
+  // Background
+  if (currentShape === 'round') {
+    svg += `<circle cx="${width/2}" cy="${height/2}" r="${(width/2)-1}" fill="white" stroke="black" stroke-width="1"/>`;
+  } else {
+    svg += `<rect x="1" y="1" width="${width-2}" height="${height-2}" fill="white" stroke="black" stroke-width="1"/>`;
+  }
+  
+  // Calculate positions
+  const centerX = width / 2;
+  let currentY = margin;
+  
+  // Greeting text
+  if (greeting) {
+    const greetingSize = appData.designSpecs.textSizes.greeting * mmToPx;
+    currentY += greetingSize;
+    svg += `<text x="${centerX}" y="${currentY}" font-family="${greetingFont}" font-size="${greetingSize}" font-weight="600" text-anchor="middle" fill="black">${greeting}</text>`;
+    currentY += greetingSize * 0.5;
+  }
+  
+  // QR Code
+  const qrSize = appData.designSpecs.qrSize * mmToPx;
+  const qrX = centerX - qrSize / 2;
+  currentY += 20;
+  
+  if (currentQRCode) {
+    const modules = currentQRCode.modules;
+    const moduleCount = modules.length;
+    const moduleSize = qrSize / moduleCount;
+    
+    for (let row = 0; row < moduleCount; row++) {
+      for (let col = 0; col < moduleCount; col++) {
+        if (modules[row][col]) {
+          const x = qrX + col * moduleSize;
+          const y = currentY + row * moduleSize;
+          svg += `<rect x="${x}" y="${y}" width="${moduleSize}" height="${moduleSize}" fill="black"/>`;
+        }
+      }
+    }
+  }
+  
+  currentY += qrSize + 15;
+  
+  // Instruction text
+  const instructionSize = appData.designSpecs.textSizes.instruction * mmToPx;
+  svg += `<text x="${centerX}" y="${currentY}" font-family="${instructionFont}" font-size="${instructionSize}" font-weight="500" text-anchor="middle" fill="black">${instruction}</text>`;
+  currentY += instructionSize * 1.5;
+  
+  // Credentials
+  const credentialSize = appData.designSpecs.textSizes.credentials * mmToPx;
+  svg += `<text x="${centerX}" y="${currentY}" font-family="${credentialFont}" font-size="${credentialSize}" text-anchor="middle" fill="black">Network: ${ssid}</text>`;
+  currentY += credentialSize * 1.2;
+  svg += `<text x="${centerX}" y="${currentY}" font-family="${credentialFont}" font-size="${credentialSize}" text-anchor="middle" fill="black">Password: ${password}</text>`;
+  
+  svg += '</svg>';
+  
+  // Download SVG
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `wifi-magnet-${currentShape}-${ssid.replace(/[^a-zA-Z0-9]/g, '_')}.svg`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Generate PNG
+function generatePNG() {
+  const ssid = elements.ssidInput.value.trim();
+  
+  if (!ssid) {
+    alert('Please enter a WiFi SSID');
+    return;
+  }
+  
+  const password = elements.passwordInput.value;
+  const greeting = elements.greetingInput.value.trim();
+  const instruction = elements.instructionInput.value.trim() || 'Scan to Connect';
+  const shape = appData.magnetShapes[currentShape];
+  const greetingFont = elements.greetingFontSelect.value;
+  const instructionFont = elements.instructionFontSelect.value;
+  const credentialFont = elements.credentialFontSelect.value;
+  
+  // Create high-resolution canvas for PNG export
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  
+  // High DPI for crisp output (300 DPI)
+  const dpiScale = 300 / 96;
+  const mmToPx = 3.7795275591 * dpiScale;
+  const width = currentShape === 'square' ? shape.width * mmToPx : shape.diameter * mmToPx;
+  const height = currentShape === 'square' ? shape.height * mmToPx : shape.diameter * mmToPx;
+  const margin = appData.designSpecs.margin * mmToPx;
+  
+  canvas.width = width;
+  canvas.height = height;
+  
+  // Set high DPI scaling
+  ctx.scale(dpiScale, dpiScale);
+  
+  // White background
+  ctx.fillStyle = 'white';
+  if (currentShape === 'round') {
+    ctx.beginPath();
+    ctx.arc(width/(2*dpiScale), height/(2*dpiScale), (width/(2*dpiScale))-1, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  } else {
+    ctx.fillRect(0, 0, width/dpiScale, height/dpiScale);
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(1, 1, (width/dpiScale)-2, (height/dpiScale)-2);
+  }
+  
+  // Calculate positions
+  const centerX = width / (2 * dpiScale);
+  let currentY = margin / dpiScale;
+  
+  ctx.fillStyle = 'black';
+  ctx.textAlign = 'center';
+  
+  // Greeting text
+  if (greeting) {
+    const greetingSize = appData.designSpecs.textSizes.greeting * mmToPx / dpiScale;
+    currentY += greetingSize;
+    ctx.font = `600 ${greetingSize}px ${greetingFont}`;
+    ctx.fillText(greeting, centerX, currentY);
+    currentY += greetingSize * 0.5;
+  }
+  
+  // QR Code
+  const qrSize = appData.designSpecs.qrSize * mmToPx / dpiScale;
+  const qrX = centerX - qrSize / 2;
+  currentY += 20 / dpiScale;
+  
+  if (currentQRCode) {
+    const modules = currentQRCode.modules;
+    const moduleCount = modules.length;
+    const moduleSize = qrSize / moduleCount;
+    
+    for (let row = 0; row < moduleCount; row++) {
+      for (let col = 0; col < moduleCount; col++) {
+        if (modules[row][col]) {
+          const x = qrX + col * moduleSize;
+          const y = currentY + row * moduleSize;
+          ctx.fillRect(x, y, moduleSize, moduleSize);
+        }
+      }
+    }
+  }
+  
+  currentY += qrSize + 15 / dpiScale;
+  
+  // Instruction text
+  const instructionSize = appData.designSpecs.textSizes.instruction * mmToPx / dpiScale;
+  ctx.font = `500 ${instructionSize}px ${instructionFont}`;
+  ctx.fillText(instruction, centerX, currentY);
+  currentY += instructionSize * 1.5;
+  
+  // Credentials
+  const credentialSize = appData.designSpecs.textSizes.credentials * mmToPx / dpiScale;
+  ctx.font = `400 ${credentialSize}px ${credentialFont}`;
+  ctx.fillText(`Network: ${ssid}`, centerX, currentY);
+  currentY += credentialSize * 1.2;
+  ctx.fillText(`Password: ${password}`, centerX, currentY);
+  
+  // Download PNG
+  canvas.toBlob(function(blob) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = filename;
+    a.download = `wifi-magnet-${currentShape}-${ssid.replace(/[^a-zA-Z0-9]/g, '_')}.png`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  });
 }
