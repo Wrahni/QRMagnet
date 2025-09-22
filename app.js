@@ -142,23 +142,23 @@ function generateWiFiString() {
 
 // Generate QR code
 function generateQRCode() {
-  const wifiString = generateWiFiString();
-  if (!wifiString) return null;
-  
-  try {
-    // Create QR code with high error correction
-    currentQRCode = QRCode.create(wifiString, {
-      errorCorrectionLevel: 'H',
-      margin: 1,
-      width: 150
-    });
+    const wifiString = generateWiFiString();
+    if (!wifiString) return null;
     
-    return currentQRCode;
-  } catch (error) {
-    console.error('QR Code generation failed:', error);
-    return null;
-  }
+    try {
+        // Use QRCode.toCanvas directly - this method exists!
+        QRCode.toCanvas(elements.qrCanvas, wifiString, {
+            errorCorrectionLevel: 'H',
+            margin: 1,
+            width: 150
+        });
+        return true;
+    } catch (error) {
+        console.error('QR Code generation failed:', error);
+        return false;
+    }
 }
+
 
 // Draw QR code to canvas
 function drawQRCodeToCanvas(qrCode, canvas) {
