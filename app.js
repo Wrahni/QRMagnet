@@ -1,315 +1,447 @@
-// Application data
-const appData = {
-    magnetShapes: {
-        square: { name: "Square", dimensions: "60×60mm", width: 60, height: 60 },
-        round: { name: "Round", dimensions: "Ø65mm", diameter: 65 }
-    },
-    fonts: {
-        serif: [
-            { name: "Playfair Display", family: "Playfair Display, serif" },
-            { name: "Georgia", family: "Georgia, serif" },
-            { name: "Times New Roman", family: "Times New Roman, serif" }
-        ],
-        sansSerif: [
-            { name: "Montserrat", family: "Montserrat, sans-serif" },
-            { name: "Roboto", family: "Roboto, sans-serif" },
-            { name: "Arial", family: "Arial, sans-serif" }
-        ],
-        monospace: [
-            { name: "Inconsolata", family: "Inconsolata, monospace" },
-            { name: "Courier New", family: "Courier New, monospace" },
-            { name: "Monaco", family: "Monaco, monospace" }
-        ]
-    },
-    designSpecs: {
-        qrSize: 40,
-        margin: 3,
-        textSizes: { greeting: 8, instruction: 6, credentials: 5 }
-    }
-};
-
-// Global state
-let currentQRCodeData = null;
-let currentShape = 'square';
-
-// DOM Elements - Wait for DOM to be loaded
-let elements = {};
-
-// Initialize the application
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, initializing...');
+// WiFi QR Code Magnet Generator App
+(function() {
+    'use strict';
     
-    // Initialize DOM elements
-    elements = {
-        form: document.getElementById('magnetForm'),
-        ssidInput: document.getElementById('ssid'),
-        passwordInput: document.getElementById('password'),
-        securitySelect: document.getElementById('security'),
-        greetingInput: document.getElementById('greeting'),
-        instructionInput: document.getElementById('instruction'),
-        greetingFontSelect: document.getElementById('greetingFont'),
-        instructionFontSelect: document.getElementById('instructionFont'),
-        credentialFontSelect: document.getElementById('credentialFont'),
-        togglePasswordBtn: document.getElementById('togglePassword'),
-        toggleIcon: document.getElementById('toggleIcon'),
-        generateSVGBtn: document.getElementById('generateSVG'),
-        generatePNGBtn: document.getElementById('generatePNG'),
-        magnetPreview: document.getElementById('magnetPreview'),
-        previewDimensions: document.getElementById('previewDimensions'),
-        previewGreeting: document.getElementById('previewGreeting'),
-        previewInstruction: document.getElementById('previewInstruction'),
-        previewSSID: document.getElementById('previewSSID'),
-        previewPassword: document.getElementById('previewPassword'),
-        qrCanvas: document.getElementById('qrCanvas'),
-        shapeInputs: document.querySelectorAll('input[name="shape"]')
-    };
-    
-    // Verify QRCode library is loaded
+    // Check if QRCode library is loaded
     if (typeof QRCode === 'undefined') {
-        console.error('QRCode library not loaded! Check if the CDN script is included.');
-        alert('QR Code library failed to load. Please refresh the page.');
+        console.error('QRCode library not loaded');
         return;
-    } else {
-        console.log('QRCode library loaded successfully');
     }
-    
-    // Verify all DOM elements exist
-    for (const [key, element] of Object.entries(elements)) {
-        if (!element) {
-            console.error(`Missing DOM element: ${key}`);
+
+    // Application state
+    const state = {
+        ssid: '',
+        password: '',
+        security: 'WPA',
+        greeting: '',
+        instruction: 'Scan to Connect',
+        shape: 'square',
+        fonts: {
+            greeting: 'Playfair Display, serif',
+            instruction: 'Montserrat, sans-serif',
+            credentials: 'Inconsolata, monospace'
+        }
+    };
+
+    // DOM elements
+    let elements = {};
+
+    // Wait for DOM to be ready
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeApp();
+    });
+
+    function initializeApp() {
+        try {
+            // Get all DOM elements
+            elements = {
+                ssid: document.getElementById('ssid'),
+                password: document.getElementById('password'),
+                security: document.getElementById('security'),
+                greeting: document.getElementById('greeting'),
+                instruction: document.getElementById('instruction'),
+                togglePassword: document.getElementById('togglePassword'),
+                shapeInputs: document.querySelectorAll('input[name="shape"]'),
+                greetingFont: document.getElementById('greetingFont'),
+                instructionFont: document.getElementById('instructionFont'),
+                credentialsFont: document.getElementById('credentialsFont'),
+                downloadSvg: document.getElementById('downloadSvg'),
+                downloadPng: document.getElementById('downloadPng'),
+                qrCanvas: document.getElementById('qrCanvas'),
+                magnetPreview: document.getElementById('magnetPreview'),
+                greetingText: document.getElementById('greetingText'),
+                instructionText: document.getElementById('instructionText'),
+                credentialsText: document.getElementById('credentialsText'),
+                errorMessage: document.getElementById('errorMessage')
+            };
+
+            // Verify all elements exist
+            const missingElements = Object.entries(elements).filter(([key, el]) => !el && key !== 'shapeInputs');
+            if (missingElements.length > 0) {
+                console.error('Missing DOM elements:', missingElements.map(([key]) => key));
+                return;
+            }
+
+            setupEventListeners();
+            initializeFonts();
+            updatePreview();
+        } catch (error) {
+            console.error('Failed to initialize app:', error);
+            showError('Failed to initialize application. Please refresh the page.');
         }
     }
-    
-    initializeEventListeners();
-    updatePreview();
-});
 
-// Event listeners
-function initializeEventListeners() {
-    // Form inputs
-    if (elements.ssidInput) elements.ssidInput.addEventListener('input', updatePreview);
-    if (elements.passwordInput) elements.passwordInput.addEventListener('input', updatePreview);
-    if (elements.securitySelect) elements.securitySelect.addEventListener('change', updatePreview);
-    if (elements.greetingInput) elements.greetingInput.addEventListener('input', updatePreview);
-    if (elements.instructionInput) elements.instructionInput.addEventListener('input', updatePreview);
-    
-    // Font selectors
-    if (elements.greetingFontSelect) elements.greetingFontSelect.addEventListener('change', updateFonts);
-    if (elements.instructionFontSelect) elements.instructionFontSelect.addEventListener('change', updateFonts);
-    if (elements.credentialFontSelect) elements.credentialFontSelect.addEventListener('change', updateFonts);
-    
-    // Shape selector
-    elements.shapeInputs.forEach(input => {
-        input.addEventListener('change', handleShapeChange);
-    });
-    
-    // Password toggle
-    if (elements.togglePasswordBtn) elements.togglePasswordBtn.addEventListener('click', togglePasswordVisibility);
-    
-    // Generate buttons
-    if (elements.generateSVGBtn) elements.generateSVGBtn.addEventListener('click', generateSVG);
-    if (elements.generatePNGBtn) elements.generatePNGBtn.addEventListener('click', generatePNG);
-}
-
-// Handle shape change
-function handleShapeChange(event) {
-    currentShape = event.target.value;
-    const shape = appData.magnetShapes[currentShape];
-    
-    // Update preview container
-    if (elements.magnetPreview) elements.magnetPreview.className = `magnet-preview ${currentShape}`;
-    if (elements.previewDimensions) elements.previewDimensions.textContent = shape.dimensions;
-    
-    updatePreview();
-}
-
-// Toggle password visibility
-function togglePasswordVisibility() {
-    if (!elements.passwordInput || !elements.toggleIcon) return;
-    
-    const isPassword = elements.passwordInput.type === 'password';
-    elements.passwordInput.type = isPassword ? 'text' : 'password';
-    elements.toggleIcon.textContent = isPassword ? '🙈' : '👁';
-}
-
-// Update fonts in preview
-function updateFonts() {
-    if (!elements.greetingFontSelect || !elements.instructionFontSelect || !elements.credentialFontSelect) return;
-    
-    const greetingFont = elements.greetingFontSelect.value;
-    const instructionFont = elements.instructionFontSelect.value;
-    const credentialFont = elements.credentialFontSelect.value;
-    
-    if (elements.previewGreeting) elements.previewGreeting.style.fontFamily = greetingFont;
-    if (elements.previewInstruction) elements.previewInstruction.style.fontFamily = instructionFont;
-    if (elements.previewSSID) elements.previewSSID.style.fontFamily = credentialFont;
-    if (elements.previewPassword) elements.previewPassword.style.fontFamily = credentialFont;
-}
-
-// Escape special characters in WiFi strings
-function escapeWiFiString(str) {
-    if (!str) return str;
-    return str.replace(/\\/g, '\\\\')    // Escape backslashes
-              .replace(/;/g, '\\;')      // Escape semicolons  
-              .replace(/,/g, '\\,')      // Escape commas
-              .replace(/"/g, '\\"');     // Escape quotes
-}
-
-// Generate WiFi QR code string
-function generateWiFiString() {
-    if (!elements.ssidInput || !elements.passwordInput || !elements.securitySelect) return null;
-    
-    const ssid = escapeWiFiString(elements.ssidInput.value.trim());
-    const password = escapeWiFiString(elements.passwordInput.value);
-    const security = elements.securitySelect.value;
-    
-    if (!ssid) return null;
-    
-    // Format: WIFI:T:<type>;S:<ssid>;P:<password>;H:;;
-    let wifiString = `WIFI:T:${security};S:${ssid}`;
-    if (security !== 'nopass' && password) {
-        wifiString += `;P:${password}`;
-    }
-    wifiString += `;H:;;`;
-    
-    console.log('Generated WiFi string:', wifiString);
-    return wifiString;
-}
-
-// Generate QR code - FIXED VERSION
-function generateQRCode() {
-    const wifiString = generateWiFiString();
-    if (!wifiString) return null;
-    
-    if (!elements.qrCanvas) {
-        console.error('QR Canvas element not found');
-        return null;
-    }
-    
-    try {
-        console.log('Generating QR code for:', wifiString);
-        
-        // Use QRCode.toCanvas directly - this method exists in qrcode@1.5.3
-        QRCode.toCanvas(elements.qrCanvas, wifiString, {
-            errorCorrectionLevel: 'H',
-            margin: 1,
-            width: 150
-        }, function(error) {
-            if (error) {
-                console.error('QR Code generation failed:', error);
-                showQRError();
-            } else {
-                console.log('QR Code generated successfully');
-                currentQRCodeData = wifiString;
-            }
+    function setupEventListeners() {
+        // Form inputs - use both input and change events to be thorough
+        elements.ssid.addEventListener('input', function(e) {
+            state.ssid = e.target.value.trim();
+            updatePreview();
         });
         
-        return true;
-    } catch (error) {
-        console.error('QR Code generation failed:', error);
-        showQRError();
-        return false;
+        elements.password.addEventListener('input', function(e) {
+            state.password = e.target.value;
+            updatePreview();
+        });
+        
+        elements.security.addEventListener('change', function(e) {
+            state.security = e.target.value;
+            updatePreview();
+        });
+        
+        elements.greeting.addEventListener('input', function(e) {
+            state.greeting = e.target.value.trim();
+            updatePreview();
+        });
+        
+        elements.instruction.addEventListener('input', function(e) {
+            state.instruction = e.target.value.trim() || 'Scan to Connect';
+            updatePreview();
+        });
+
+        // Password toggle
+        elements.togglePassword.addEventListener('click', function(e) {
+            e.preventDefault();
+            togglePasswordVisibility();
+        });
+
+        // Shape selection
+        elements.shapeInputs.forEach(input => {
+            input.addEventListener('change', function(e) {
+                state.shape = e.target.value;
+                elements.magnetPreview.className = `magnet-preview ${state.shape}`;
+                updatePreview();
+            });
+        });
+
+        // Font selection
+        elements.greetingFont.addEventListener('change', function(e) {
+            state.fonts.greeting = e.target.value;
+            elements.greetingText.style.fontFamily = e.target.value;
+        });
+        
+        elements.instructionFont.addEventListener('change', function(e) {
+            state.fonts.instruction = e.target.value;
+            elements.instructionText.style.fontFamily = e.target.value;
+        });
+        
+        elements.credentialsFont.addEventListener('change', function(e) {
+            state.fonts.credentials = e.target.value;
+            elements.credentialsText.style.fontFamily = e.target.value;
+        });
+
+        // Export buttons
+        elements.downloadSvg.addEventListener('click', downloadSVG);
+        elements.downloadPng.addEventListener('click', downloadPNG);
     }
-}
 
-// Show error message in QR canvas
-function showQRError() {
-    if (!elements.qrCanvas) return;
-    
-    const ctx = elements.qrCanvas.getContext('2d');
-    ctx.clearRect(0, 0, 150, 150);
-    ctx.fillStyle = '#f0f0f0';
-    ctx.fillRect(0, 0, 150, 150);
-    ctx.fillStyle = '#666';
-    ctx.font = '14px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Enter SSID', 75, 60);
-    ctx.fillText('to generate', 75, 80);
-    ctx.fillText('QR code', 75, 100);
-}
+    function initializeFonts() {
+        // Set initial font styles
+        elements.greetingText.style.fontFamily = state.fonts.greeting;
+        elements.instructionText.style.fontFamily = state.fonts.instruction;
+        elements.credentialsText.style.fontFamily = state.fonts.credentials;
+    }
 
-// Update preview
-function updatePreview() {
-    if (!elements.ssidInput || !elements.passwordInput) return;
-    
-    const ssid = elements.ssidInput.value.trim();
-    const password = elements.passwordInput.value;
-    const greeting = elements.greetingInput ? elements.greetingInput.value.trim() : '';
-    const instruction = elements.instructionInput ? elements.instructionInput.value.trim() || 'Scan to Connect' : 'Scan to Connect';
-    
-    // Update text content
-    if (elements.previewGreeting) elements.previewGreeting.textContent = greeting;
-    if (elements.previewInstruction) elements.previewInstruction.textContent = instruction;
-    if (elements.previewSSID) elements.previewSSID.textContent = ssid ? `Network: ${ssid}` : 'Network:';
-    if (elements.previewPassword) elements.previewPassword.textContent = password ? `Password: ${password}` : 'Password:';
-    
-    // Generate and display QR code
-    if (ssid) {
+    function togglePasswordVisibility() {
+        const isPassword = elements.password.type === 'password';
+        elements.password.type = isPassword ? 'text' : 'password';
+        elements.togglePassword.textContent = isPassword ? 'Hide' : 'Show';
+    }
+
+    function updatePreview() {
+        hideError();
+        
+        // Update text elements
+        elements.greetingText.textContent = state.greeting;
+        elements.instructionText.textContent = state.instruction;
+        
+        // Update credentials display
+        if (state.ssid) {
+            const credentialsText = `Network: ${state.ssid}` + 
+                (state.password && state.security !== 'nopass' ? `\nPassword: ${state.password}` : '');
+            elements.credentialsText.textContent = credentialsText;
+        } else {
+            elements.credentialsText.textContent = '';
+        }
+
+        // Generate QR code
         generateQRCode();
-    } else {
-        showQRError();
     }
-    
-    // Update fonts
-    updateFonts();
-}
 
-// Generate SVG - Simplified version
-function generateSVG() {
-    const ssid = elements.ssidInput ? elements.ssidInput.value.trim() : '';
-    if (!ssid) {
-        alert('Please enter a WiFi SSID');
-        return;
-    }
-    
-    const password = elements.passwordInput ? elements.passwordInput.value : '';
-    const greeting = elements.greetingInput ? elements.greetingInput.value.trim() : '';
-    const instruction = elements.instructionInput ? elements.instructionInput.value.trim() || 'Scan to Connect' : 'Scan to Connect';
-    
-    // For now, create a simple SVG - this would need QR code module data for full implementation
-    let svg = `<svg width="226" height="226" xmlns="http://www.w3.org/2000/svg">
-        <rect x="1" y="1" width="224" height="224" fill="white" stroke="black" stroke-width="1"/>
-        <text x="113" y="40" font-family="Playfair Display, serif" font-size="16" text-anchor="middle" fill="black">${greeting}</text>
-        <rect x="63" y="60" width="100" height="100" fill="#f0f0f0" stroke="#ccc"/>
-        <text x="113" y="115" font-size="12" text-anchor="middle" fill="#666">QR Code</text>
-        <text x="113" y="180" font-family="Montserrat, sans-serif" font-size="14" text-anchor="middle" fill="black">${instruction}</text>
-        <text x="113" y="200" font-family="Inconsolata, monospace" font-size="12" text-anchor="middle" fill="black">Network: ${ssid}</text>
-        <text x="113" y="215" font-family="Inconsolata, monospace" font-size="12" text-anchor="middle" fill="black">Password: ${password}</text>
-    </svg>`;
-    
-    // Download SVG
-    const blob = new Blob([svg], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `wifi-magnet-${currentShape}-${ssid.replace(/[^a-zA-Z0-9]/g, '')}.svg`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
+    function generateQRCode() {
+        if (!state.ssid.trim()) {
+            // Clear QR code if no SSID
+            const ctx = elements.qrCanvas.getContext('2d');
+            ctx.clearRect(0, 0, elements.qrCanvas.width, elements.qrCanvas.height);
+            
+            // Draw placeholder
+            ctx.fillStyle = '#f0f0f0';
+            ctx.fillRect(0, 0, 150, 150);
+            ctx.fillStyle = '#999';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Enter SSID', 75, 70);
+            ctx.fillText('to generate', 75, 90);
+            ctx.fillText('QR code', 75, 110);
+            return;
+        }
 
-// Generate PNG - Simplified version
-function generatePNG() {
-    const ssid = elements.ssidInput ? elements.ssidInput.value.trim() : '';
-    if (!ssid) {
-        alert('Please enter a WiFi SSID');
-        return;
+        try {
+            const wifiString = createWiFiString(state.ssid, state.password, state.security);
+            console.log('Generating QR code for:', wifiString);
+            
+            // Clear canvas first
+            const ctx = elements.qrCanvas.getContext('2d');
+            ctx.clearRect(0, 0, elements.qrCanvas.width, elements.qrCanvas.height);
+            
+            // Generate QR code using QRCode.toCanvas
+            QRCode.toCanvas(elements.qrCanvas, wifiString, {
+                width: 150,
+                height: 150,
+                errorCorrectionLevel: 'H',
+                type: 'image/png',
+                quality: 0.92,
+                margin: 1,
+                color: {
+                    dark: '#000000',
+                    light: '#FFFFFF'
+                }
+            }, function(error) {
+                if (error) {
+                    console.error('QR Code generation failed:', error);
+                    showError('Failed to generate QR code. Please check your input.');
+                    
+                    // Show error placeholder
+                    const ctx = elements.qrCanvas.getContext('2d');
+                    ctx.clearRect(0, 0, 150, 150);
+                    ctx.fillStyle = '#ffe6e6';
+                    ctx.fillRect(0, 0, 150, 150);
+                    ctx.fillStyle = '#d00';
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('QR Generation', 75, 70);
+                    ctx.fillText('Failed', 75, 90);
+                } else {
+                    console.log('QR code generated successfully');
+                }
+            });
+        } catch (error) {
+            console.error('QR Code generation error:', error);
+            showError('Error generating QR code: ' + error.message);
+            
+            // Show error placeholder
+            const ctx = elements.qrCanvas.getContext('2d');
+            ctx.clearRect(0, 0, 150, 150);
+            ctx.fillStyle = '#ffe6e6';
+            ctx.fillRect(0, 0, 150, 150);
+            ctx.fillStyle = '#d00';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Error', 75, 80);
+        }
     }
-    
-    // Create a simple PNG from the preview canvas
-    if (elements.qrCanvas) {
-        elements.qrCanvas.toBlob(function(blob) {
-            if (blob) {
+
+    function createWiFiString(ssid, password, security) {
+        // Escape special characters in WiFi string
+        function escapeWiFiString(str) {
+            if (!str) return '';
+            return str
+                .replace(/\\/g, '\\\\')  // Escape backslashes
+                .replace(/;/g, '\\;')    // Escape semicolons
+                .replace(/,/g, '\\,')    // Escape commas
+                .replace(/"/g, '\\"')    // Escape quotes
+                .replace(/'/g, "\\'");   // Escape single quotes
+        }
+
+        const escapedSSID = escapeWiFiString(ssid);
+        const escapedPassword = escapeWiFiString(password);
+        
+        // Format: WIFI:T:<security>;S:<ssid>;P:<password>;H:;;
+        let wifiString = `WIFI:T:${security};S:${escapedSSID};`;
+        
+        if (security !== 'nopass' && password) {
+            wifiString += `P:${escapedPassword};`;
+        } else {
+            wifiString += 'P:;';
+        }
+        
+        wifiString += 'H:;;';
+        
+        return wifiString;
+    }
+
+    function downloadSVG() {
+        if (!state.ssid.trim()) {
+            showError('Please enter a network name (SSID) first.');
+            return;
+        }
+
+        try {
+            // Create SVG content
+            const svgContent = createSVGContent();
+            const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `wifi-magnet-${state.ssid.replace(/[^a-zA-Z0-9]/g, '-')}.svg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('SVG download failed:', error);
+            showError('Failed to download SVG. Please try again.');
+        }
+    }
+
+    function downloadPNG() {
+        if (!state.ssid.trim()) {
+            showError('Please enter a network name (SSID) first.');
+            return;
+        }
+
+        try {
+            // Create a temporary canvas for high-resolution export
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const scale = 3; // Higher resolution
+            
+            // Set canvas size based on shape
+            const size = state.shape === 'round' ? 260 * scale : 240 * scale;
+            canvas.width = size;
+            canvas.height = size;
+            
+            // Scale context for high resolution
+            ctx.scale(scale, scale);
+            
+            // Draw magnet content
+            drawMagnetContent(ctx, state.shape === 'round' ? 260 : 240);
+            
+            // Download
+            canvas.toBlob(function(blob) {
                 const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `wifi-qr-${ssid.replace(/[^a-zA-Z0-9]/g, '')}.png`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `wifi-magnet-${state.ssid.replace(/[^a-zA-Z0-9]/g, '-')}.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
                 URL.revokeObjectURL(url);
-            }
-        });
+            }, 'image/png', 0.95);
+        } catch (error) {
+            console.error('PNG download failed:', error);
+            showError('Failed to download PNG. Please try again.');
+        }
     }
-}
+
+    function createSVGContent() {
+        const isRound = state.shape === 'round';
+        const size = isRound ? 260 : 240;
+        const qrSize = 120;
+        
+        let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`;
+        
+        // Background
+        if (isRound) {
+            svg += `<circle cx="${size/2}" cy="${size/2}" r="${size/2}" fill="white" stroke="#ddd" stroke-width="1"/>`;
+        } else {
+            svg += `<rect width="${size}" height="${size}" fill="white" stroke="#ddd" stroke-width="1" rx="12"/>`;
+        }
+        
+        // QR Code placeholder (would need actual QR generation for SVG)
+        const qrX = (size - qrSize) / 2;
+        const qrY = size / 2 - 20;
+        svg += `<rect x="${qrX}" y="${qrY}" width="${qrSize}" height="${qrSize}" fill="#f0f0f0" stroke="#ccc" rx="4"/>`;
+        svg += `<text x="${size/2}" y="${qrY + qrSize/2}" text-anchor="middle" font-family="monospace" font-size="10" fill="#666">QR Code</text>`;
+        
+        // Greeting text
+        if (state.greeting) {
+            svg += `<text x="${size/2}" y="40" text-anchor="middle" font-family="${state.fonts.greeting}" font-size="14" font-weight="600" fill="#134252">${escapeXML(state.greeting)}</text>`;
+        }
+        
+        // Instruction text
+        svg += `<text x="${size/2}" y="${qrY + qrSize + 25}" text-anchor="middle" font-family="${state.fonts.instruction}" font-size="12" font-weight="500" fill="#626c71">${escapeXML(state.instruction)}</text>`;
+        
+        // Credentials text
+        if (state.ssid) {
+            const credY = qrY + qrSize + 45;
+            svg += `<text x="${size/2}" y="${credY}" text-anchor="middle" font-family="${state.fonts.credentials}" font-size="10" fill="#626c71">Network: ${escapeXML(state.ssid)}</text>`;
+            if (state.password && state.security !== 'nopass') {
+                svg += `<text x="${size/2}" y="${credY + 15}" text-anchor="middle" font-family="${state.fonts.credentials}" font-size="10" fill="#626c71">Password: ${escapeXML(state.password)}</text>`;
+            }
+        }
+        
+        svg += '</svg>';
+        return svg;
+    }
+
+    function drawMagnetContent(ctx, size) {
+        // Clear canvas
+        ctx.clearRect(0, 0, size, size);
+        
+        // Draw background
+        ctx.fillStyle = 'white';
+        if (state.shape === 'round') {
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, size/2, 0, 2 * Math.PI);
+            ctx.fill();
+        } else {
+            ctx.fillRect(0, 0, size, size);
+        }
+        
+        // Draw QR code from canvas
+        const qrSize = 120;
+        const qrX = (size - qrSize) / 2;
+        const qrY = size / 2 - 20;
+        
+        try {
+            ctx.drawImage(elements.qrCanvas, qrX, qrY, qrSize, qrSize);
+        } catch (error) {
+            console.warn('Could not draw QR code to canvas:', error);
+        }
+        
+        // Draw text elements
+        ctx.textAlign = 'center';
+        
+        // Greeting text
+        if (state.greeting) {
+            ctx.font = `600 14px ${state.fonts.greeting}`;
+            ctx.fillStyle = '#134252';
+            ctx.fillText(state.greeting, size/2, 40);
+        }
+        
+        // Instruction text
+        ctx.font = `500 12px ${state.fonts.instruction}`;
+        ctx.fillStyle = '#626c71';
+        ctx.fillText(state.instruction, size/2, qrY + qrSize + 25);
+        
+        // Credentials text
+        if (state.ssid) {
+            ctx.font = `400 10px ${state.fonts.credentials}`;
+            ctx.fillStyle = '#626c71';
+            const credY = qrY + qrSize + 45;
+            ctx.fillText(`Network: ${state.ssid}`, size/2, credY);
+            if (state.password && state.security !== 'nopass') {
+                ctx.fillText(`Password: ${state.password}`, size/2, credY + 15);
+            }
+        }
+    }
+
+    function escapeXML(str) {
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function showError(message) {
+        elements.errorMessage.textContent = message;
+        elements.errorMessage.classList.remove('hidden');
+    }
+
+    function hideError() {
+        elements.errorMessage.classList.add('hidden');
+    }
+})();
