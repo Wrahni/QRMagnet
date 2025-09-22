@@ -8,7 +8,7 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Montserrat:wght@400;500;600&family=Roboto:wght@300;400;500&family=Inconsolata:wght@400;500&display=swap" rel="stylesheet">
     
-    <!-- QR Code Generation Library -->
+    <!-- QR Code Generation Library - MUST LOAD BEFORE app.js -->
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     
     <link rel="stylesheet" href="style.css">
@@ -30,10 +30,10 @@
                     <!-- Settings Panel -->
                     <div class="settings-panel">
                         <div class="card">
-                            <div class="card__header">
+                            <div class="card-header">
                                 <h2>Magnet Configuration</h2>
                             </div>
-                            <div class="card__body">
+                            <div class="card-body">
                                 <form id="magnetForm" class="magnet-form">
                                     <!-- Shape Selection -->
                                     <div class="form-group">
@@ -54,20 +54,20 @@
 
                                     <!-- WiFi Information -->
                                     <div class="form-group">
-                                        <label for="ssid" class="form-label">WiFi Network Name (SSID) *</label>
+                                        <label for="ssid" class="form-label">WiFi Network Name (SSID)</label>
                                         <input type="text" id="ssid" class="form-control" required placeholder="e.g., SmithWiFi">
                                     </div>
-
+                                    
                                     <div class="form-group">
-                                        <label for="password" class="form-label">WiFi Password *</label>
+                                        <label for="password" class="form-label">WiFi Password</label>
                                         <div class="password-field">
                                             <input type="password" id="password" class="form-control" required placeholder="Enter WiFi password">
                                             <button type="button" id="togglePassword" class="password-toggle">
-                                                <span id="toggleIcon">👁️</span>
+                                                <span id="toggleIcon">👁</span>
                                             </button>
                                         </div>
                                     </div>
-
+                                    
                                     <div class="form-group">
                                         <label for="security" class="form-label">Security Type</label>
                                         <select id="security" class="form-control">
@@ -82,7 +82,7 @@
                                         <label for="greeting" class="form-label">Greeting Text (Optional)</label>
                                         <input type="text" id="greeting" class="form-control" placeholder="e.g., Welcome to the Smith Home">
                                     </div>
-
+                                    
                                     <div class="form-group">
                                         <label for="instruction" class="form-label">Instruction Text</label>
                                         <input type="text" id="instruction" class="form-control" value="Scan to Connect">
@@ -97,7 +97,7 @@
                                             <option value="Times New Roman, serif" style="font-family: Times New Roman, serif">Times New Roman</option>
                                         </select>
                                     </div>
-
+                                    
                                     <div class="form-group">
                                         <label for="instructionFont" class="form-label">Instruction Font</label>
                                         <select id="instructionFont" class="form-control font-select">
@@ -106,7 +106,7 @@
                                             <option value="Arial, sans-serif" style="font-family: Arial, sans-serif">Arial</option>
                                         </select>
                                     </div>
-
+                                    
                                     <div class="form-group">
                                         <label for="credentialFont" class="form-label">SSID/Password Font</label>
                                         <select id="credentialFont" class="form-control font-select">
@@ -118,12 +118,8 @@
 
                                     <!-- Generate Buttons -->
                                     <div class="button-group">
-                                        <button type="button" id="generateSVG" class="btn btn--primary">
-                                            Download SVG
-                                        </button>
-                                        <button type="button" id="generatePNG" class="btn btn--outline">
-                                            Download PNG
-                                        </button>
+                                        <button type="button" id="generateSVG" class="btn btn--primary">Download SVG</button>
+                                        <button type="button" id="generatePNG" class="btn btn--outline">Download PNG</button>
                                     </div>
                                 </form>
                             </div>
@@ -133,13 +129,13 @@
                     <!-- Preview Panel -->
                     <div class="preview-panel">
                         <div class="card">
-                            <div class="card__header">
+                            <div class="card-header">
                                 <h2>Live Preview</h2>
                                 <div class="preview-info">
                                     <span id="previewDimensions">60×60mm</span>
                                 </div>
                             </div>
-                            <div class="card__body">
+                            <div class="card-body">
                                 <div class="preview-container">
                                     <div id="magnetPreview" class="magnet-preview square">
                                         <div class="greeting-text" id="previewGreeting"></div>
@@ -148,8 +144,8 @@
                                         </div>
                                         <div class="instruction-text" id="previewInstruction">Scan to Connect</div>
                                         <div class="credentials">
-                                            <div class="ssid-text" id="previewSSID">Network: </div>
-                                            <div class="password-text" id="previewPassword">Password: </div>
+                                            <div class="ssid-text" id="previewSSID">Network:</div>
+                                            <div class="password-text" id="previewPassword">Password:</div>
                                         </div>
                                     </div>
                                 </div>
@@ -164,19 +160,20 @@
                 </div>
             </div>
         </main>
-
-        <!-- Hidden SVG for generation -->
-        <svg id="hiddenSVG" style="display: none;" width="226" height="226" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-                <style>
-                    .greeting { font-family: Playfair Display, serif; font-size: 30px; fill: black; text-anchor: middle; }
-                    .instruction { font-family: Montserrat, sans-serif; font-size: 22px; fill: black; text-anchor: middle; }
-                    .credentials { font-family: Inconsolata, monospace; font-size: 18px; fill: black; text-anchor: middle; }
-                </style>
-            </defs>
-        </svg>
     </div>
 
+    <!-- Hidden SVG for generation -->
+    <svg id="hiddenSVG" style="display: none;" width="226" height="226" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <style>
+                .greeting { font-family: Playfair Display, serif; font-size: 30px; fill: black; text-anchor: middle; }
+                .instruction { font-family: Montserrat, sans-serif; font-size: 22px; fill: black; text-anchor: middle; }
+                .credentials { font-family: Inconsolata, monospace; font-size: 18px; fill: black; text-anchor: middle; }
+            </style>
+        </defs>
+    </svg>
+
+    <!-- Load app.js AFTER QRCode library is loaded -->
     <script src="app.js"></script>
 </body>
 </html>
