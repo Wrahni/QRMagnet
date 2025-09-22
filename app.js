@@ -121,24 +121,33 @@ function updateFonts() {
   elements.previewPassword.style.fontFamily = credentialFont;
 }
 
-// Generate WiFi QR code string
-function generateWiFiString() {
-  const ssid = elements.ssidInput.value.trim();
-  const password = elements.passwordInput.value;
-  const security = elements.securitySelect.value;
-  
-  if (!ssid) return null;
-  
-  // Format: WIFI:T:WPA;S:SSID;P:PASSWORD;H:;;
-  let wifiString = `WIFI:T:${security};S:${ssid};`;
-  
-  if (security !== 'nopass' && password) {
-    wifiString += `P:${password};`;
-  }
-  
-  wifiString += 'H:;;';
-  return wifiString;
+// Add this NEW function right before generateWiFiString()
+function escapeWiFiString(str) {
+    if (!str) return str;
+    return str.replace(/\\/g, '\\\\')    // Escape backslashes
+              .replace(/;/g, '\\;')      // Escape semicolons  
+              .replace(/,/g, '\\,')      // Escape commas
+              .replace(/"/g, '\\"');     // Escape quotes
 }
+
+// Then UPDATE your existing generateWiFiString() function to use it:
+function generateWiFiString() {
+    const ssid = escapeWiFiString(elements.ssidInput.value.trim());        // <- ADD escapeWiFiString() here
+    const password = escapeWiFiString(elements.passwordInput.value);       // <- ADD escapeWiFiString() here
+    const security = elements.securitySelect.value;
+    
+    if (!ssid) return null;
+    
+    // Format: WIFI:T:<type>;S:<ssid>;P:<password>;H:;;
+    let wifiString = `WIFI:T:${security};S:${ssid}`;
+    if (security !== 'nopass' && password) {
+        wifiString += `;P:${password}`;
+    }
+    wifiString += `;H:;;`;
+    
+    return wifiString;
+}
+
 
 // Generate QR code
 function generateQRCode() {
